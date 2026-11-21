@@ -71,9 +71,9 @@ header.top { display: flex; flex-wrap: wrap; align-items: center; justify-conten
 .logo { width: 40px; height: 40px; border-radius: 11px; background: var(--accent); color: var(--accent-ink);
   display: grid; place-items: center; font-family: var(--font-display); font-weight: 800; font-size: 1.1rem; }
 
-.tabs { display: flex; gap: 4px; background: var(--surface-2); padding: 4px; border-radius: 12px; overflow-x: auto; }
-.tab { flex: 1 0 auto; border: 0; background: transparent; color: var(--muted); font: 600 .92rem var(--font-body);
-  padding: 10px 14px; border-radius: 9px; cursor: pointer; white-space: nowrap; }
+.tabs { display: flex; gap: 6px; background: var(--surface-2); padding: 6px; border-radius: 16px; overflow-x: auto; }
+.tab { flex: 1 0 auto; border: 0; background: transparent; color: var(--muted); font: 700 1.02rem var(--font-body);
+  padding: 16px 16px; border-radius: 12px; cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; }
 .tab:hover { color: var(--fg); }
 .tab[aria-selected="true"] { background: var(--surface); color: var(--fg); box-shadow: var(--shadow); }
 .tab .count { display: inline-block; min-width: 20px; padding: 0 6px; margin-left: 6px; border-radius: 99px;
@@ -161,8 +161,8 @@ tr.paid td.name { text-decoration: line-through; }
 .summary { display: flex; gap: 8px 22px; flex-wrap: wrap; }
 .summary > div { display: grid; gap: 0; }
 .summary strong { font-family: var(--font-display); font-size: 1.05rem; }
-.tab .step { display: inline-grid; place-items: center; width: 20px; height: 20px; margin-right: 7px; border-radius: 99px;
-  background: var(--line); color: var(--muted); font-size: .72rem; font-weight: 700; }
+.tab .step { display: inline-grid; place-items: center; width: 26px; height: 26px; margin-right: 9px; border-radius: 99px; flex: none;
+  background: var(--line); color: var(--muted); font-size: .82rem; font-weight: 700; }
 .tab[aria-selected="true"] .step { background: var(--accent); color: var(--accent-ink); }
 .dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 8px; }
 .buckets { display: grid; gap: 16px; margin-top: 16px; }
@@ -174,6 +174,7 @@ tr.paid td.name { text-decoration: line-through; }
 .debt .bar { background: var(--line); }
 .debt-head, .debt-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
 .pay-inline { width: 110px; }
+.pay-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
 .net { background: var(--surface); }
 .net-value { font-family: var(--font-display); font-weight: 800; font-size: 2.4rem; line-height: 1.1; margin: 4px 0; }
 .net-parts { display: grid; gap: 4px; text-align: right; font-weight: 600; }
@@ -187,12 +188,13 @@ tr.total td { font-weight: 700; }
 @media (max-width: 640px) {
   .acct { grid-template-columns: 1fr 1fr; }
   .acct .field:first-child { grid-column: 1 / -1; }
-  .tab { padding: 10px 10px; }
+  .tab { padding: 14px 10px; }
 }
 @media (max-width: 520px) {
   .tabs { display: grid; grid-template-columns: repeat(3, 1fr); }
+  .tab { white-space: normal; line-height: 1.2; min-height: 60px; text-align: center; }
   .net-parts { text-align: left; }
-  .tab { padding: 9px 2px; font-size: .85rem; }
+  .tab { padding: 12px 4px; font-size: .95rem; }
   .tab .step { display: none; }
   .tab .count { margin-left: 3px; padding: 0 5px; min-width: 0; }
 }
@@ -226,7 +228,7 @@ tr.total td { font-weight: 700; }
   <nav class="tabs" role="tablist" aria-label="Sections">
     <button class="tab" role="tab" id="tab-pay" aria-controls="pay" aria-selected="true"><span class="step">1</span>Pay</button>
     <button class="tab" role="tab" id="tab-split" aria-controls="split" aria-selected="false"><span class="step">2</span>Split</button>
-    <button class="tab" role="tab" id="tab-bills" aria-controls="bills" aria-selected="false"><span class="step">3</span>Bills</button>
+    <button class="tab" role="tab" id="tab-bills" aria-controls="bills" aria-selected="false"><span class="step">3</span>Bills / Direct Debits</button>
     <button class="tab" role="tab" id="tab-savings" aria-controls="savings" aria-selected="false"><span class="step">4</span>Savings</button>
     <button class="tab" role="tab" id="tab-debts" aria-controls="debts" aria-selected="false"><span class="step">5</span>Debts<span class="count" id="owingCount" hidden></span></button>
     <button class="tab" role="tab" id="tab-totals" aria-controls="totals" aria-selected="false"><span class="step">6</span>Totals</button>
@@ -255,8 +257,12 @@ tr.total td { font-weight: 700; }
         <div class="small muted num" id="payRate"></div>
       </div>
       <div id="payError" class="small" style="color:var(--danger);margin-top:8px" hidden>Tax paid can't be more than your pay before tax. Check the figures on your payslip.</div>
-      <div style="display:flex;justify-content:flex-end;margin-top:16px">
-        <button class="btn" type="button" data-goto="split">See my split</button>
+      <div class="pay-actions">
+        <span class="small muted" id="paySaved"></span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn" type="button" id="savePay">Save this pay</button>
+          <button class="btn ghost" type="button" data-goto="split">See my split</button>
+        </div>
       </div>
     </div>
     <div class="card">
@@ -292,12 +298,12 @@ tr.total td { font-weight: 700; }
   <!-- 3. BILLS -->
   <section class="panel" id="bills" role="tabpanel" aria-labelledby="tab-bills" hidden>
     <div class="grid-2">
-      <div class="card stat"><span class="label">Bills per fortnight</span><span class="value num" id="blFortnight">$0.00</span><span class="sub">all bills averaged to a fortnight</span></div>
+      <div class="card stat"><span class="label">Bills &amp; direct debits per fortnight</span><span class="value num" id="blFortnight">$0.00</span><span class="sub">all bills averaged to a fortnight</span></div>
       <div class="card stat"><span class="label">Expenses budget used</span><span class="value num" id="blUsed">0%</span><div class="bar" style="margin-top:6px"><span id="blUsedBar" style="background:var(--expenses);width:0"></span></div><span class="sub" id="blLeft"></span></div>
     </div>
 
     <div class="card">
-      <div class="card-head"><h2 id="billFormTitle">Add a bill</h2></div>
+      <div class="card-head"><h2 id="billFormTitle">Add a bill or direct debit</h2></div>
       <form class="row" id="billForm">
         <div class="field"><label for="bName">Name</label><input id="bName" required placeholder="e.g. Electricity"></div>
         <div class="field"><label for="bAmount">Amount</label><div class="money"><input id="bAmount" type="number" inputmode="decimal" min="0" step="0.01" required placeholder="0.00"></div></div>
@@ -324,7 +330,7 @@ tr.total td { font-weight: 700; }
 
     <div class="card">
       <div class="card-head">
-        <h2>Your bills</h2>
+        <h2>Your bills and direct debits</h2>
         <select id="billFilter" style="width:auto" aria-label="Show">
           <option value="all">All</option><option value="unpaid">Unpaid</option><option value="dd">Direct debits</option><option value="bill">Due dates</option>
         </select>
@@ -381,7 +387,7 @@ tr.total td { font-weight: 700; }
   <section class="panel" id="debts" role="tabpanel" aria-labelledby="tab-debts" hidden>
     <div class="grid-3">
       <div class="card stat"><span class="label">Total owing</span><span class="value num" id="dbTotal" style="color:var(--danger)">$0.00</span><span class="sub" id="dbTotalSub"></span></div>
-      <div class="card stat"><span class="label">Debt repayments</span><span class="value num" id="dbRepay">$0.00</span><span class="sub">per fortnight, from your 60% expenses</span></div>
+      <div class="card stat"><span class="label">Debt repayments</span><span class="value num" id="dbRepay">$0.00</span><span class="sub">per fortnight, kept separate from your 60% expenses</span></div>
       <div class="card stat"><span class="label">Bills unpaid before next pay</span><span class="value num" id="dbBills">$0.00</span><span class="sub" id="dbBillsSub"></span></div>
     </div>
 
@@ -407,13 +413,13 @@ tr.total td { font-weight: 700; }
     </div>
 
     <div class="card">
-      <div class="card-head"><h2>Bills still to pay</h2><button class="btn small ghost" data-goto="bills" type="button">Go to bills</button></div>
+      <div class="card-head"><h2>Bills and direct debits still to pay</h2><button class="btn small ghost" data-goto="bills" type="button">Go to Bills / Direct Debits</button></div>
       <div class="list" id="owedBills"></div>
     </div>
 
     <div class="card">
       <div class="card-head"><h2>Start over</h2></div>
-      <p class="small muted" style="margin:0 0 12px">Removes your pay, account details, bills, savings and debts from this browser.</p>
+      <p class="small muted" style="margin:0 0 12px">Removes your pay history, account details, bills, savings and debts from this browser.</p>
       <button class="btn danger" type="button" id="resetAll">Clear all my data</button>
       <span class="confirm" id="resetConfirm"><span class="small">Are you sure?</span><button class="btn small danger" type="button" id="resetYes">Yes, clear it</button><button class="btn small ghost" type="button" id="resetNo">Cancel</button></span>
     </div>
@@ -425,6 +431,21 @@ tr.total td { font-weight: 700; }
       <div class="card-head" style="margin:0"><div><span class="label">Where you stand</span><div class="net-value num" id="ttNet">$0.00</div>
         <div class="small muted">Savings minus debts and bills due before next pay</div></div>
         <div class="net-parts num" id="ttNetParts"></div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Pay running total</h2><button class="btn small ghost" data-goto="pay" type="button">Add a pay</button></div>
+      <div class="grid-3" style="margin-bottom:14px">
+        <div class="stat"><span class="label">Pays saved</span><span class="value num" id="rtCount">0</span><span class="sub" id="rtSince"></span></div>
+        <div class="stat"><span class="label">Total take-home</span><span class="value num" id="rtTotal" style="color:var(--savings)">$0.00</span><span class="sub" id="rtTotalSub"></span></div>
+        <div class="stat"><span class="label">This financial year</span><span class="value num" id="rtFY">$0.00</span><span class="sub" id="rtFYSub"></span></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Pay date</th><th class="r">Before tax</th><th class="r hide-sm">Tax</th><th class="r">Take-home</th><th class="r">Running total</th><th></th></tr></thead>
+          <tbody id="rtTable"></tbody>
+        </table>
+      </div>
     </div>
 
     <div class="card">
@@ -466,7 +487,7 @@ tr.total td { font-weight: 700; }
   "use strict";
   const KEY = "baiden-finance-v1";
   const SPLIT = [
-    { key: "exp", name: "Expenses", pct: 0.6, color: "var(--expenses)", hint: "Rent, bills, groceries, fuel, debt repayments" },
+    { key: "exp", name: "Expenses", pct: 0.6, color: "var(--expenses)", hint: "Rent, bills, direct debits, groceries, fuel" },
     { key: "spend", name: "Spending", pct: 0.2, color: "var(--spending)", hint: "Eating out, fun, shopping" },
     { key: "save", name: "Savings", pct: 0.2, color: "var(--savings)", hint: "Money you put away" }
   ];
@@ -511,6 +532,12 @@ tr.total td { font-weight: 700; }
     return {
       example: true,
       pay: { gross: 3200, tax: 612, date: addDays(t, -3) },
+      payHistory: [
+        { date: addDays(t, -45), gross: 3200, tax: 612 },
+        { date: addDays(t, -31), gross: 3450, tax: 690 },
+        { date: addDays(t, -17), gross: 3200, tax: 612 },
+        { date: addDays(t, -3), gross: 3200, tax: 612 }
+      ],
       accounts: blankAccounts(),
       bills: [
         { id: uid(), name: "Rent", amount: 900, freq: "fortnightly", type: "dd", due: addDays(t, 4), paid: false },
@@ -534,7 +561,7 @@ tr.total td { font-weight: 700; }
       ]
     };
   }
-  function emptyData() { return { example: false, pay: { gross: 0, tax: 0, date: isoDate(today()) }, accounts: blankAccounts(), bills: [], savings: [], goal: { name: "", target: 0 }, debts: [] }; }
+  function emptyData() { return { example: false, pay: { gross: 0, tax: 0, date: isoDate(today()) }, payHistory: [], accounts: blankAccounts(), bills: [], savings: [], goal: { name: "", target: 0 }, debts: [] }; }
 
   let state;
   try { const raw = localStorage.getItem(KEY); state = raw ? JSON.parse(raw) : null; } catch (e) { state = null; }
@@ -542,6 +569,7 @@ tr.total td { font-weight: 700; }
   // Fill in anything older saved data is missing
   state.accounts = Object.assign(blankAccounts(), state.accounts || {});
   state.debts = state.debts || [];
+  state.payHistory = state.payHistory || [];
   state.bills = state.bills || []; state.savings = state.savings || []; state.goal = state.goal || { name: "", target: 0 };
 
   function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* storage unavailable */ } }
@@ -578,7 +606,7 @@ tr.total td { font-weight: 700; }
   // ---------- Render ----------
   function render() {
     const th = takeHome(), bk = buckets(), exp = bk[0].amount;
-    const committed = billsPerFortnight() + debtsPerFortnight();
+    const committed = billsPerFortnight();
     const owe = billsOwing(), oweSum = owe.reduce((s, b) => s + b.amount, 0);
     const overdue = owe.filter((b) => daysUntil(b.due) < 0).length;
     const bal = savingsBalance(), debt = totalDebt();
@@ -598,6 +626,10 @@ tr.total td { font-weight: 700; }
     $("payRate").textContent = state.pay.gross > 0
       ? `${money(state.pay.gross)} before tax − ${money(state.pay.tax)} tax · ${(state.pay.tax / state.pay.gross * 100).toFixed(1)}% goes to tax`
       : "Enter your pay before tax and the tax paid to see what you take home.";
+    const saved = state.payHistory.find((p) => p.date === state.pay.date);
+    const same = saved && saved.gross === +state.pay.gross && saved.tax === +state.pay.tax;
+    $("savePay").textContent = saved ? "Update saved pay" : "Save this pay";
+    $("paySaved").textContent = !state.pay.date ? "Pick a pay date to save this pay." : same ? `✓ Pay for ${niceDate(state.pay.date)} is saved to your running total.` : saved ? "You've changed this pay since saving it." : "Save it to add it to your running total.";
     $("payNext").textContent = `${longDate(np)} (in ${daysUntil(np)} days)` + (oweSum > 0 ? `. Before then you have ${money(oweSum)} in bills to cover.` : ".");
 
     // 2. Split
@@ -615,7 +647,7 @@ tr.total td { font-weight: 700; }
     $("blUsed").textContent = exp > 0 ? Math.round(usedPct) + "%" : "–";
     $("blUsedBar").style.width = Math.min(100, usedPct) + "%";
     $("blUsedBar").style.background = usedPct > 100 ? "var(--danger)" : "var(--expenses)";
-    $("blLeft").textContent = exp > 0 ? `${money(exp - committed)} left after bills and debt repayments` : "";
+    $("blLeft").textContent = exp > 0 ? `${money(exp - committed)} left after bills and direct debits` : "";
     renderBills();
 
     // 4. Savings
@@ -681,7 +713,7 @@ tr.total td { font-weight: 700; }
     const exp = bk[0].amount, used = exp > 0 ? committed / exp * 100 : 0;
     $("expBar").style.width = Math.min(100, used) + "%";
     $("expBar").style.background = used > 100 ? "var(--danger)" : "var(--expenses)";
-    $("expNote").textContent = exp > 0 ? `${money(committed)} goes on bills and debt repayments (${Math.round(used)}%), ${money(exp - committed)} left for groceries, fuel and the rest` : "";
+    $("expNote").textContent = exp > 0 ? `${money(committed)} goes on bills and direct debits (${Math.round(used)}%), ${money(exp - committed)} left for groceries, fuel and the rest` : "";
   }
   function syncAccountInputs() {
     document.querySelectorAll("#buckets input[data-acc]").forEach((i) => { i.value = state.accounts[i.dataset.acc][i.dataset.f] || ""; });
@@ -719,7 +751,7 @@ tr.total td { font-weight: 700; }
         <td class="r"><div class="actions">
           <button class="btn small ${b.paid ? "ghost" : ""}" type="button" data-act="paid" data-id="${b.id}">${b.paid ? "Undo" : "Mark paid"}</button>${del}
         </div></td></tr>`;
-    }).join("") : `<tr><td colspan="7" class="empty">${state.bills.length ? "Nothing matches this filter." : "No bills yet. Add your first one above."}</td></tr>`;
+    }).join("") : `<tr><td colspan="7" class="empty">${state.bills.length ? "Nothing matches this filter." : "Nothing added yet. Add your first bill or direct debit above."}</td></tr>`;
   }
 
   let editingDebt = null;
@@ -759,27 +791,54 @@ tr.total td { font-weight: 700; }
     return `<tr class="${cls}"><td>${opts.dot ? `<span class="dot" style="background:${opts.dot}"></span>` : ""}${label}</td><td class="r num" ${opts.color ? `style="color:${opts.color}"` : ""}>${value}</td></tr>`;
   }
   function li(label, value, color) { return `<div class="list-item"><span>${label}</span><span class="num" style="font-weight:600${color ? `;color:${color}` : ""}">${value}</span></div>`; }
+  function financialYearStart() {
+    const t = today(), y = t.getMonth() >= 6 ? t.getFullYear() : t.getFullYear() - 1;
+    return isoDate(new Date(y, 6, 1));
+  }
+  function renderRunningTotal() {
+    const list = [...state.payHistory].sort((a, b) => a.date.localeCompare(b.date));
+    let run = 0, gross = 0, tax = 0;
+    const rows = list.map((p) => {
+      const th = Math.max(0, round2(p.gross - p.tax)); run = round2(run + th); gross += p.gross; tax += p.tax;
+      return { ...p, th, run };
+    });
+    const fy = financialYearStart(), fyRows = rows.filter((r) => r.date >= fy);
+    const fyTotal = fyRows.reduce((s, r) => s + r.th, 0);
+    $("rtCount").textContent = rows.length;
+    $("rtSince").textContent = rows.length ? `since ${parseDate(rows[0].date).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}` : "save a pay on the Pay tab";
+    $("rtTotal").textContent = money(run);
+    $("rtTotalSub").textContent = rows.length ? `${money(gross)} before tax, ${money(tax)} tax` : "";
+    $("rtFY").textContent = money(fyTotal);
+    $("rtFYSub").textContent = `since 1 July ${fy.slice(0, 4)} · ${fyRows.length} pay${fyRows.length === 1 ? "" : "s"}`;
+    $("rtTable").innerHTML = rows.length ? rows.reverse().map((r) => `<tr>
+      <td class="num">${parseDate(r.date).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}</td>
+      <td class="r num">${money(r.gross)}</td><td class="r num hide-sm">${money(r.tax)}</td>
+      <td class="r num">${money(r.th)}</td><td class="r num" style="font-weight:700">${money(r.run)}</td>
+      <td class="r"><button class="btn small ghost" type="button" data-delpay="${r.date}" aria-label="Delete pay of ${r.date}">✕</button></td></tr>`).join("")
+      : `<tr><td colspan="6" class="empty">No pays saved yet. Enter your pay on the Pay tab and press Save this pay.</td></tr>`;
+  }
   function renderTotals(th, bk, oweSum, bal, debt) {
+    renderRunningTotal();
     const net = round2(bal - debt - oweSum);
     $("ttNet").textContent = money(net);
     $("ttNet").style.color = net < 0 ? "var(--danger)" : "var(--savings)";
     $("ttNetParts").innerHTML = `<div><span class="muted">Savings</span> ${money(bal)}</div><div><span class="muted">Debts</span> −${money(debt)}</div><div><span class="muted">Bills due</span> −${money(oweSum)}</div>`;
     $("ttPayDate").textContent = state.pay.date ? `Pay of ${longDate(state.pay.date)}` : "";
-    const bills = billsPerFortnight(), debts = debtsPerFortnight(), left = bk[0].amount - bills - debts;
+    const bills = billsPerFortnight(), debts = debtsPerFortnight(), left = bk[0].amount - bills;
     $("ttFortnight").innerHTML =
       row("Pay before tax", money(+state.pay.gross || 0)) +
       row("Tax paid", "−" + money(+state.pay.tax || 0), { color: "var(--danger)" }) +
       row("Take-home pay", money(th), { total: true }) +
       row("Expenses (60%)", money(bk[0].amount), { dot: "var(--expenses)" }) +
-      row("Bills", "−" + money(bills), { sub: true }) +
-      row("Debt repayments", "−" + money(debts), { sub: true }) +
+      row("Bills and direct debits", "−" + money(bills), { sub: true }) +
       row("Left for groceries, fuel and the rest", money(left), { sub: true, strong: true, color: left < 0 ? "var(--danger)" : "" }) +
       row("Spending (20%)", money(bk[1].amount), { dot: "var(--spending)" }) +
-      row("Savings (20%)", money(bk[2].amount), { dot: "var(--savings)" });
+      row("Savings (20%)", money(bk[2].amount), { dot: "var(--savings)" }) +
+      row("Debt repayments (separate from the split)", money(debts), { color: "var(--muted)" });
     const per = (n) => `<td class="r num">${money(n)}</td><td class="r num">${money(n * 26 / 12)}</td><td class="r num">${money(n * 26)}</td>`;
     $("ttTime").innerHTML = [
       ["Pay before tax", +state.pay.gross || 0], ["Tax paid", +state.pay.tax || 0], ["Take-home pay", th],
-      ["Bills", bills], ["Debt repayments", debts], ["Spending", bk[1].amount], ["Savings", bk[2].amount]
+      ["Bills and direct debits", bills], ["Debt repayments", debts], ["Spending", bk[1].amount], ["Savings", bk[2].amount]
     ].map(([l, n]) => `<tr${l === "Take-home pay" ? ' class="total"' : ""}><td>${l}</td>${per(n)}</tr>`).join("");
     const dep = state.savings.filter((t) => t.amount > 0).reduce((s, t) => s + t.amount, 0);
     const wd = state.savings.filter((t) => t.amount < 0).reduce((s, t) => s - t.amount, 0);
@@ -822,6 +881,19 @@ tr.total td { font-weight: 700; }
   }));
   $("payDate").addEventListener("change", (e) => { state.pay.date = e.target.value; touch(); });
   $("payForm").addEventListener("submit", (e) => e.preventDefault());
+  $("savePay").addEventListener("click", () => {
+    if (!state.pay.date) { toast("Pick a pay date first"); return; }
+    if (!(state.pay.gross > 0)) { toast("Enter your pay before tax first"); return; }
+    if (+state.pay.tax > +state.pay.gross) { toast("Tax can't be more than your pay"); return; }
+    const entry = { date: state.pay.date, gross: +state.pay.gross, tax: +state.pay.tax };
+    const i = state.payHistory.findIndex((p) => p.date === entry.date);
+    if (i >= 0) state.payHistory[i] = entry; else state.payHistory.push(entry);
+    toast(`Pay for ${niceDate(entry.date)} saved`); touch();
+  });
+  $("rtTable").addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-delpay]"); if (!btn) return;
+    state.payHistory = state.payHistory.filter((p) => p.date !== btn.dataset.delpay); toast("Pay removed"); touch();
+  });
 
   // ---------- Split: account details ----------
   $("buckets").addEventListener("input", (e) => {
@@ -836,7 +908,7 @@ tr.total td { font-weight: 700; }
   $("bType").addEventListener("change", syncDueLabel);
   function resetBillForm() {
     editingId = null; $("billForm").reset(); $("bFreq").value = "monthly"; $("bDue").value = isoDate(today()); syncDueLabel();
-    $("billSubmit").textContent = "Add"; $("billFormTitle").textContent = "Add a bill"; $("billCancel").hidden = true;
+    $("billSubmit").textContent = "Add"; $("billFormTitle").textContent = "Add a bill or direct debit"; $("billCancel").hidden = true;
   }
   $("billForm").addEventListener("submit", (e) => {
     e.preventDefault();
