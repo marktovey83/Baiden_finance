@@ -10,3 +10,9 @@ A simple fortnightly money planner. Open `index.html` in any browser. There's no
 6. **Totals**: a running total of every saved pay (plus this financial year), where you stand overall (savings minus debts and bills due), a fortnightly breakdown, fortnight/month/year totals, and savings and debt progress so far.
 
 Data is saved in your browser (localStorage) on this device only.
+
+## Open it online
+
+The app is a single static page, so GitHub Pages can host it for free:
+Settings → Pages → Build and deployment → Source: **Deploy from a branch**, Branch: `ccr-2a9bd6f3-w6kkny`, folder `/ (root)`, then Save.
+After a minute it's live at https://marktovey83.github.io/Baiden_finance/
