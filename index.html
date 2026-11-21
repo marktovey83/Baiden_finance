@@ -128,6 +128,7 @@ table { width: 100%; border-collapse: collapse; font-size: .92rem; }
 th, td { text-align: left; padding: 11px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
 th { font-size: .72rem; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; }
 td.r, th.r { text-align: right; }
+td.r.num { white-space: nowrap; }
 tr.paid td { color: var(--muted); }
 tr.paid td.name { text-decoration: line-through; }
 .pill { display: inline-block; font-size: .74rem; font-weight: 600; padding: 2px 9px; border-radius: 99px; white-space: nowrap; }
@@ -173,6 +174,15 @@ tr.paid td.name { text-decoration: line-through; }
 .debt .bar { background: var(--line); }
 .debt-head, .debt-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
 .pay-inline { width: 110px; }
+.net { background: var(--surface); }
+.net-value { font-family: var(--font-display); font-weight: 800; font-size: 2.4rem; line-height: 1.1; margin: 4px 0; }
+.net-parts { display: grid; gap: 4px; text-align: right; font-weight: 600; }
+.ledger td { padding: 10px; }
+.ledger tr.total td { font-weight: 700; border-top: 2px solid var(--fg); }
+.ledger tr.sub td:first-child { padding-left: 34px; color: var(--muted); }
+.ledger tr.strong td { font-weight: 600; }
+.ledger tr.strong td:first-child { color: var(--fg); }
+tr.total td { font-weight: 700; }
 .pay-inline input { padding-block: 6px; font-size: .85rem; }
 @media (max-width: 640px) {
   .acct { grid-template-columns: 1fr 1fr; }
@@ -180,7 +190,9 @@ tr.paid td.name { text-decoration: line-through; }
   .tab { padding: 10px 10px; }
 }
 @media (max-width: 520px) {
-  .tab { flex: 1 1 0; padding: 9px 2px; font-size: .8rem; }
+  .tabs { display: grid; grid-template-columns: repeat(3, 1fr); }
+  .net-parts { text-align: left; }
+  .tab { padding: 9px 2px; font-size: .85rem; }
   .tab .step { display: none; }
   .tab .count { margin-left: 3px; padding: 0 5px; min-width: 0; }
 }
@@ -217,6 +229,7 @@ tr.paid td.name { text-decoration: line-through; }
     <button class="tab" role="tab" id="tab-bills" aria-controls="bills" aria-selected="false"><span class="step">3</span>Bills</button>
     <button class="tab" role="tab" id="tab-savings" aria-controls="savings" aria-selected="false"><span class="step">4</span>Savings</button>
     <button class="tab" role="tab" id="tab-debts" aria-controls="debts" aria-selected="false"><span class="step">5</span>Debts<span class="count" id="owingCount" hidden></span></button>
+    <button class="tab" role="tab" id="tab-totals" aria-controls="totals" aria-selected="false"><span class="step">6</span>Totals</button>
   </nav>
 
   <!-- 1. PAY -->
@@ -404,6 +417,46 @@ tr.paid td.name { text-decoration: line-through; }
       <p class="small muted" style="margin:0 0 12px">Removes your pay, account details, bills, savings and debts from this browser.</p>
       <button class="btn danger" type="button" id="resetAll">Clear all my data</button>
       <span class="confirm" id="resetConfirm"><span class="small">Are you sure?</span><button class="btn small danger" type="button" id="resetYes">Yes, clear it</button><button class="btn small ghost" type="button" id="resetNo">Cancel</button></span>
+    </div>
+  </section>
+
+  <!-- 6. TOTALS -->
+  <section class="panel" id="totals" role="tabpanel" aria-labelledby="tab-totals" hidden>
+    <div class="card net">
+      <div class="card-head" style="margin:0"><div><span class="label">Where you stand</span><div class="net-value num" id="ttNet">$0.00</div>
+        <div class="small muted">Savings minus debts and bills due before next pay</div></div>
+        <div class="net-parts num" id="ttNetParts"></div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Each fortnight</h2><span class="muted small" id="ttPayDate"></span></div>
+      <div class="table-wrap">
+        <table class="ledger">
+          <tbody id="ttFortnight"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Over time</h2></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th class="r">Fortnight</th><th class="r">Month</th><th class="r">Year</th></tr></thead>
+          <tbody id="ttTime"></tbody>
+        </table>
+      </div>
+      <p class="small muted" style="margin:12px 0 0">Month = fortnight × 26 ÷ 12. Year = fortnight × 26.</p>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-head"><h2>Savings so far</h2></div>
+        <div class="list" id="ttSavings"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>Debts so far</h2></div>
+        <div class="list" id="ttDebts"></div>
+      </div>
     </div>
   </section>
 </div>
@@ -596,6 +649,7 @@ tr.paid td.name { text-decoration: line-through; }
     $("dbBills").textContent = money(oweSum);
     $("dbBillsSub").textContent = owe.length ? `${owe.length} bill${owe.length > 1 ? "s" : ""}${overdue ? `, ${overdue} overdue` : ""}` : "nothing due";
     renderDebts();
+    renderTotals(th, bk, oweSum, bal, debt);
     const ob = [...owe].sort((a, b) => a.due.localeCompare(b.due));
     $("owedBills").innerHTML = ob.length ? ob.map((b) => {
       const st = billStatus(b);
@@ -703,10 +757,46 @@ tr.paid td.name { text-decoration: line-through; }
     }).join("") : `<div class="empty">No debts recorded. If you owe money on a card or loan, add it above.</div>`;
   }
 
+  function row(label, value, opts = {}) {
+    const cls = [opts.strong ? "strong" : "", opts.sub ? "sub" : "", opts.total ? "total" : ""].join(" ");
+    return `<tr class="${cls}"><td>${opts.dot ? `<span class="dot" style="background:${opts.dot}"></span>` : ""}${label}</td><td class="r num" ${opts.color ? `style="color:${opts.color}"` : ""}>${value}</td></tr>`;
+  }
+  function li(label, value, color) { return `<div class="list-item"><span>${label}</span><span class="num" style="font-weight:600${color ? `;color:${color}` : ""}">${value}</span></div>`; }
+  function renderTotals(th, bk, oweSum, bal, debt) {
+    const net = round2(bal - debt - oweSum);
+    $("ttNet").textContent = money(net);
+    $("ttNet").style.color = net < 0 ? "var(--danger)" : "var(--savings)";
+    $("ttNetParts").innerHTML = `<div><span class="muted">Savings</span> ${money(bal)}</div><div><span class="muted">Debts</span> −${money(debt)}</div><div><span class="muted">Bills due</span> −${money(oweSum)}</div>`;
+    $("ttPayDate").textContent = state.pay.date ? `Pay of ${longDate(state.pay.date)}` : "";
+    const bills = billsPerFortnight(), debts = debtsPerFortnight(), left = bk[0].amount - bills - debts;
+    $("ttFortnight").innerHTML =
+      row("Pay before tax", money(+state.pay.gross || 0)) +
+      row("Tax paid", "−" + money(+state.pay.tax || 0), { color: "var(--danger)" }) +
+      row("Take-home pay", money(th), { total: true }) +
+      row("Expenses (60%)", money(bk[0].amount), { dot: "var(--expenses)" }) +
+      row("Bills", "−" + money(bills), { sub: true }) +
+      row("Debt repayments", "−" + money(debts), { sub: true }) +
+      row("Left for groceries, fuel and the rest", money(left), { sub: true, strong: true, color: left < 0 ? "var(--danger)" : "" }) +
+      row("Spending (20%)", money(bk[1].amount), { dot: "var(--spending)" }) +
+      row("Savings (20%)", money(bk[2].amount), { dot: "var(--savings)" });
+    const per = (n) => `<td class="r num">${money(n)}</td><td class="r num">${money(n * 26 / 12)}</td><td class="r num">${money(n * 26)}</td>`;
+    $("ttTime").innerHTML = [
+      ["Pay before tax", +state.pay.gross || 0], ["Tax paid", +state.pay.tax || 0], ["Take-home pay", th],
+      ["Bills", bills], ["Debt repayments", debts], ["Spending", bk[1].amount], ["Savings", bk[2].amount]
+    ].map(([l, n]) => `<tr${l === "Take-home pay" ? ' class="total"' : ""}><td>${l}</td>${per(n)}</tr>`).join("");
+    const dep = state.savings.filter((t) => t.amount > 0).reduce((s, t) => s + t.amount, 0);
+    const wd = state.savings.filter((t) => t.amount < 0).reduce((s, t) => s - t.amount, 0);
+    $("ttSavings").innerHTML = li("Total deposited", money(dep), "var(--savings)") + li("Total withdrawn", "−" + money(wd), "var(--danger)") +
+      li("Current balance", money(bal)) + li("Goal", state.goal.target > 0 ? `${money(state.goal.target)} (${Math.min(100, Math.round(bal / state.goal.target * 100))}%)` : "Not set");
+    const orig = state.debts.reduce((s, d) => s + d.original, 0);
+    $("ttDebts").innerHTML = li("Total borrowed", money(orig)) + li("Paid off so far", money(orig - debt), "var(--savings)") +
+      li("Still owing", money(debt), "var(--danger)") + li("Debts cleared", `${state.debts.filter((d) => d.balance <= 0).length} of ${state.debts.length}`);
+  }
+
   function touch() { state.example = false; save(); render(); }
 
   // ---------- Tabs ----------
-  const tabs = ["pay", "split", "bills", "savings", "debts"];
+  const tabs = ["pay", "split", "bills", "savings", "debts", "totals"];
   function showTab(name, focus) {
     if (!tabs.includes(name)) name = "pay";
     tabs.forEach((t) => {
