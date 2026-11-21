@@ -156,6 +156,34 @@ tr.paid td.name { text-decoration: line-through; }
   .hide-sm { display: none; }
   .stat .value { font-size: 1.45rem; }
 }
+
+.summary { display: flex; gap: 8px 22px; flex-wrap: wrap; }
+.summary > div { display: grid; gap: 0; }
+.summary strong { font-family: var(--font-display); font-size: 1.05rem; }
+.tab .step { display: inline-grid; place-items: center; width: 20px; height: 20px; margin-right: 7px; border-radius: 99px;
+  background: var(--line); color: var(--muted); font-size: .72rem; font-weight: 700; }
+.tab[aria-selected="true"] .step { background: var(--accent); color: var(--accent-ink); }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 8px; }
+.buckets { display: grid; gap: 16px; margin-top: 16px; }
+.bucket-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.acct { display: grid; gap: 10px; grid-template-columns: 2fr 1fr 1.4fr; }
+.acct input { background: var(--surface); }
+.debt-list { display: grid; gap: 14px; }
+.debt { display: grid; gap: 10px; padding: 16px; border-radius: 12px; background: var(--surface-2); }
+.debt .bar { background: var(--line); }
+.debt-head, .debt-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.pay-inline { width: 110px; }
+.pay-inline input { padding-block: 6px; font-size: .85rem; }
+@media (max-width: 640px) {
+  .acct { grid-template-columns: 1fr 1fr; }
+  .acct .field:first-child { grid-column: 1 / -1; }
+  .tab { padding: 10px 10px; }
+}
+@media (max-width: 520px) {
+  .tab { flex: 1 1 0; padding: 9px 2px; font-size: .8rem; }
+  .tab .step { display: none; }
+  .tab .count { margin-left: 3px; padding: 0 5px; min-width: 0; }
+}
 </style>
 </head>
 <body>
@@ -168,88 +196,45 @@ tr.paid td.name { text-decoration: line-through; }
         <div class="muted small">Your fortnightly money, sorted 60 / 20 / 20</div>
       </div>
     </div>
-    <div class="muted small" id="cycleLabel"></div>
+    <div class="summary">
+      <div><span class="label">Take-home</span><strong class="num" id="sumTake">$0.00</strong></div>
+      <div><span class="label">Savings</span><strong class="num" id="sumSave" style="color:var(--savings)">$0.00</strong></div>
+      <div><span class="label">Owing</span><strong class="num" id="sumOwe" style="color:var(--danger)">$0.00</strong></div>
+    </div>
   </header>
 
   <div id="exampleNotice" class="notice" hidden>
     <span>You're looking at example figures. Replace them with your own, or clear everything to start fresh.</span>
-    <span style="display:flex;gap:8px">
+    <span style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn small ghost" id="keepExample" type="button">Keep and edit</button>
       <button class="btn small" id="clearExample" type="button">Clear example data</button>
     </span>
   </div>
 
   <nav class="tabs" role="tablist" aria-label="Sections">
-    <button class="tab" role="tab" id="tab-overview" aria-controls="overview" aria-selected="true">Overview</button>
-    <button class="tab" role="tab" id="tab-pay" aria-controls="pay" aria-selected="false">Pay</button>
-    <button class="tab" role="tab" id="tab-bills" aria-controls="bills" aria-selected="false">Bills<span class="hide-sm"> &amp; Direct Debits</span><span class="count" id="unpaidCount" hidden></span></button>
-    <button class="tab" role="tab" id="tab-savings" aria-controls="savings" aria-selected="false">Savings</button>
+    <button class="tab" role="tab" id="tab-pay" aria-controls="pay" aria-selected="true"><span class="step">1</span>Pay</button>
+    <button class="tab" role="tab" id="tab-split" aria-controls="split" aria-selected="false"><span class="step">2</span>Split</button>
+    <button class="tab" role="tab" id="tab-bills" aria-controls="bills" aria-selected="false"><span class="step">3</span>Bills</button>
+    <button class="tab" role="tab" id="tab-savings" aria-controls="savings" aria-selected="false"><span class="step">4</span>Savings</button>
+    <button class="tab" role="tab" id="tab-debts" aria-controls="debts" aria-selected="false"><span class="step">5</span>Debts<span class="count" id="owingCount" hidden></span></button>
   </nav>
 
-  <!-- OVERVIEW -->
-  <section class="panel" id="overview" role="tabpanel" aria-labelledby="tab-overview">
-    <div class="grid-4">
-      <div class="card stat"><span class="label">Take-home pay</span><span class="value num" id="ovTake">$0.00</span><span class="sub">per fortnight, after tax</span></div>
-      <div class="card stat"><span class="label">Outstanding bills</span><span class="value num" id="ovOutstanding" style="color:var(--danger)">$0.00</span><span class="sub" id="ovOutstandingSub">nothing unpaid</span></div>
-      <div class="card stat"><span class="label">Current savings</span><span class="value num" id="ovSavings" style="color:var(--savings)">$0.00</span><span class="sub" id="ovSavingsSub">no goal set</span></div>
-      <div class="card stat"><span class="label">Left in expenses</span><span class="value num" id="ovLeft">$0.00</span><span class="sub">60% budget minus bills this fortnight</span></div>
-    </div>
-
+  <!-- 1. PAY -->
+  <section class="panel" id="pay" role="tabpanel" aria-labelledby="tab-pay">
     <div class="card">
-      <div class="card-head"><h2>This fortnight's split</h2><span class="muted small num" id="ovSplitNote"></span></div>
-      <div class="splitbar" aria-hidden="true">
-        <span style="flex:60;background:var(--expenses)"></span>
-        <span style="flex:20;background:var(--spending)"></span>
-        <span style="flex:20;background:var(--savings)"></span>
-      </div>
-      <div class="grid-3" style="margin-top:16px">
-        <div class="bucket" style="--c:var(--expenses)">
-          <div style="display:flex;justify-content:space-between"><h3>Expenses</h3><span class="pct">60%</span></div>
-          <div class="amt num" id="bExp">$0.00</div>
-          <div class="bar"><span id="bExpBar" style="background:var(--expenses);width:0"></span></div>
-          <div class="small muted num" id="bExpNote">Rent, bills, groceries, fuel</div>
-        </div>
-        <div class="bucket" style="--c:var(--spending)">
-          <div style="display:flex;justify-content:space-between"><h3>Spending</h3><span class="pct">20%</span></div>
-          <div class="amt num" id="bSpend">$0.00</div>
-          <div class="small muted">Eating out, fun, shopping</div>
-        </div>
-        <div class="bucket" style="--c:var(--savings)">
-          <div style="display:flex;justify-content:space-between"><h3>Savings</h3><span class="pct">20%</span></div>
-          <div class="amt num" id="bSave">$0.00</div>
-          <div class="small muted">Into your savings account</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="grid-2">
-      <div class="card">
-        <div class="card-head"><h2>Coming up</h2><button class="btn small ghost" data-goto="bills" type="button">All bills</button></div>
-        <div class="list" id="ovUpcoming"></div>
-      </div>
-      <div class="card">
-        <div class="card-head"><h2>Savings goal</h2><button class="btn small ghost" data-goto="savings" type="button">Manage</button></div>
-        <div id="ovGoal"></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- PAY -->
-  <section class="panel" id="pay" role="tabpanel" aria-labelledby="tab-pay" hidden>
-    <div class="card">
-      <div class="card-head"><h2>Your fortnightly pay</h2><span class="muted small">Copy these from your payslip</span></div>
+      <div class="card-head"><h2>Enter your pay</h2><span class="muted small">Copy these from your payslip</span></div>
       <form class="row" id="payForm">
+        <div class="field">
+          <label for="payDate">Pay date</label>
+          <input id="payDate" type="date">
+        </div>
         <div class="field">
           <label for="gross">Pay before tax (gross)</label>
           <div class="money"><input id="gross" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00"></div>
         </div>
         <div class="field">
-          <label for="tax">Tax paid (PAYG withheld)</label>
+          <label for="tax">Tax paid</label>
           <div class="money"><input id="tax" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00"></div>
-        </div>
-        <div class="field">
-          <label for="payDate">Pay day</label>
-          <input id="payDate" type="date">
         </div>
       </form>
       <div class="takehome">
@@ -257,10 +242,30 @@ tr.paid td.name { text-decoration: line-through; }
         <div class="small muted num" id="payRate"></div>
       </div>
       <div id="payError" class="small" style="color:var(--danger);margin-top:8px" hidden>Tax paid can't be more than your pay before tax. Check the figures on your payslip.</div>
+      <div style="display:flex;justify-content:flex-end;margin-top:16px">
+        <button class="btn" type="button" data-goto="split">See my split</button>
+      </div>
     </div>
-
     <div class="card">
-      <div class="card-head"><h2>How your take-home splits</h2></div>
+      <div class="card-head"><h2>Next pay day</h2></div>
+      <p style="margin:0" class="num" id="payNext"></p>
+    </div>
+  </section>
+
+  <!-- 2. SPLIT -->
+  <section class="panel" id="split" role="tabpanel" aria-labelledby="tab-split" hidden>
+    <div class="card">
+      <div class="card-head"><h2>Where your pay goes</h2><span class="muted small num" id="splitNote"></span></div>
+      <div class="splitbar" aria-hidden="true">
+        <span style="flex:60;background:var(--expenses)"></span>
+        <span style="flex:20;background:var(--spending)"></span>
+        <span style="flex:20;background:var(--savings)"></span>
+      </div>
+      <div class="buckets" id="buckets"></div>
+      <p class="small muted" style="margin:14px 0 0">Account details save as you type. Use them when you set up transfers in your banking app.</p>
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>Your split over time</h2></div>
       <div class="table-wrap">
         <table>
           <thead><tr><th>Bucket</th><th class="r">Share</th><th class="r">Per fortnight</th><th class="r hide-sm">Per month</th><th class="r hide-sm">Per year</th></tr></thead>
@@ -271,19 +276,22 @@ tr.paid td.name { text-decoration: line-through; }
     </div>
   </section>
 
-  <!-- BILLS -->
+  <!-- 3. BILLS -->
   <section class="panel" id="bills" role="tabpanel" aria-labelledby="tab-bills" hidden>
     <div class="grid-3">
-      <div class="card stat"><span class="label">Outstanding</span><span class="value num" id="blOutstanding" style="color:var(--danger)">$0.00</span><span class="sub" id="blOutstandingSub"></span></div>
+      <div class="card stat"><span class="label">Unpaid before next pay</span><span class="value num" id="blOutstanding" style="color:var(--danger)">$0.00</span><span class="sub" id="blOutstandingSub"></span></div>
       <div class="card stat"><span class="label">Bills per fortnight</span><span class="value num" id="blFortnight">$0.00</span><span class="sub">all bills averaged to a fortnight</span></div>
-      <div class="card stat"><span class="label">Expenses budget used</span><span class="value num" id="blUsed">0%</span><div class="bar" style="margin-top:6px"><span id="blUsedBar" style="background:var(--expenses);width:0"></span></div></div>
+      <div class="card stat"><span class="label">Expenses budget used</span><span class="value num" id="blUsed">0%</span><div class="bar" style="margin-top:6px"><span id="blUsedBar" style="background:var(--expenses);width:0"></span></div><span class="sub" id="blLeft"></span></div>
     </div>
 
     <div class="card">
-      <div class="card-head"><h2 id="billFormTitle">Add a bill or direct debit</h2></div>
+      <div class="card-head"><h2 id="billFormTitle">Add a bill</h2></div>
       <form class="row" id="billForm">
         <div class="field"><label for="bName">Name</label><input id="bName" required placeholder="e.g. Electricity"></div>
         <div class="field"><label for="bAmount">Amount</label><div class="money"><input id="bAmount" type="number" inputmode="decimal" min="0" step="0.01" required placeholder="0.00"></div></div>
+        <div class="field"><label for="bType">How it's paid</label>
+          <select id="bType"><option value="dd">Direct debit (comes out automatically)</option><option value="bill">Due date (I pay it myself)</option></select>
+        </div>
         <div class="field"><label for="bFreq">How often</label>
           <select id="bFreq">
             <option value="weekly">Weekly</option>
@@ -294,10 +302,7 @@ tr.paid td.name { text-decoration: line-through; }
             <option value="once">One-off</option>
           </select>
         </div>
-        <div class="field"><label for="bType">Type</label>
-          <select id="bType"><option value="bill">Bill (I pay it)</option><option value="dd">Direct debit (auto)</option></select>
-        </div>
-        <div class="field"><label for="bDue">Next due</label><input id="bDue" type="date" required></div>
+        <div class="field"><label for="bDue" id="bDueLabel">Debit date</label><input id="bDue" type="date" required></div>
         <div class="field" style="display:flex;gap:8px;flex-direction:row">
           <button class="btn" type="submit" id="billSubmit" style="flex:1">Add</button>
           <button class="btn ghost" type="button" id="billCancel" hidden>Cancel</button>
@@ -308,29 +313,29 @@ tr.paid td.name { text-decoration: line-through; }
     <div class="card">
       <div class="card-head">
         <h2>Your bills</h2>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <select id="billFilter" style="width:auto">
-            <option value="all">All</option><option value="unpaid">Unpaid</option><option value="bill">Bills only</option><option value="dd">Direct debits only</option>
-          </select>
-        </div>
+        <select id="billFilter" style="width:auto" aria-label="Show">
+          <option value="all">All</option><option value="unpaid">Unpaid</option><option value="dd">Direct debits</option><option value="bill">Due dates</option>
+        </select>
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Name</th><th>Type</th><th class="hide-sm">How often</th><th>Due</th><th class="r">Amount</th><th class="r">Status</th><th class="r"><span class="hide-sm">Actions</span></th></tr></thead>
+          <thead><tr><th>Name</th><th>Type</th><th class="hide-sm">How often</th><th>Date</th><th class="r">Amount</th><th class="r">Status</th><th class="r"><span class="hide-sm">Actions</span></th></tr></thead>
           <tbody id="billTable"></tbody>
         </table>
       </div>
-      <p class="small muted" style="margin:12px 0 0">Marking a recurring bill as paid moves its due date on to the next one.</p>
+      <p class="small muted" style="margin:12px 0 0">Marking a recurring bill as paid moves it on to its next date.</p>
     </div>
   </section>
 
-  <!-- SAVINGS -->
+  <!-- 4. SAVINGS -->
   <section class="panel" id="savings" role="tabpanel" aria-labelledby="tab-savings" hidden>
     <div class="grid-3">
       <div class="card stat"><span class="label">Current savings</span><span class="value num" id="svBalance" style="color:var(--savings)">$0.00</span><span class="sub" id="svBalanceSub"></span></div>
       <div class="card stat"><span class="label">This fortnight's 20%</span><span class="value num" id="svTwenty">$0.00</span><button class="btn small" id="svAddTwenty" type="button" style="justify-self:start;margin-top:6px">Add to savings</button></div>
       <div class="card stat"><span class="label">Goal</span><span class="value num" id="svGoal">Not set</span><span class="sub" id="svGoalSub"></span></div>
     </div>
+
+    <div class="card" id="goalCard"></div>
 
     <div class="grid-2">
       <div class="card">
@@ -358,10 +363,45 @@ tr.paid td.name { text-decoration: line-through; }
       <div class="card-head"><h2>History</h2><span class="muted small" id="txCount"></span></div>
       <div class="list" id="txList"></div>
     </div>
+  </section>
+
+  <!-- 5. DEBTS -->
+  <section class="panel" id="debts" role="tabpanel" aria-labelledby="tab-debts" hidden>
+    <div class="grid-3">
+      <div class="card stat"><span class="label">Total owing</span><span class="value num" id="dbTotal" style="color:var(--danger)">$0.00</span><span class="sub" id="dbTotalSub"></span></div>
+      <div class="card stat"><span class="label">Debt repayments</span><span class="value num" id="dbRepay">$0.00</span><span class="sub">per fortnight, from your 60% expenses</span></div>
+      <div class="card stat"><span class="label">Bills unpaid before next pay</span><span class="value num" id="dbBills">$0.00</span><span class="sub" id="dbBillsSub"></span></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2 id="debtFormTitle">Add a debt</h2><span class="muted small">Credit cards, loans, Afterpay, money owed to family</span></div>
+      <form class="row" id="debtForm">
+        <div class="field"><label for="dName">Name</label><input id="dName" required placeholder="e.g. Credit card"></div>
+        <div class="field"><label for="dBalance">Amount owing</label><div class="money"><input id="dBalance" type="number" inputmode="decimal" min="0" step="0.01" required placeholder="0.00"></div></div>
+        <div class="field"><label for="dRepay">Repayment</label><div class="money"><input id="dRepay" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00"></div></div>
+        <div class="field"><label for="dFreq">How often</label>
+          <select id="dFreq"><option value="weekly">Weekly</option><option value="fortnightly" selected>Fortnightly</option><option value="monthly">Monthly</option></select>
+        </div>
+        <div class="field" style="display:flex;gap:8px;flex-direction:row">
+          <button class="btn" type="submit" id="debtSubmit" style="flex:1">Add</button>
+          <button class="btn ghost" type="button" id="debtCancel" hidden>Cancel</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Your debts</h2></div>
+      <div id="debtList" class="debt-list"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Bills still to pay</h2><button class="btn small ghost" data-goto="bills" type="button">Go to bills</button></div>
+      <div class="list" id="owedBills"></div>
+    </div>
 
     <div class="card">
       <div class="card-head"><h2>Start over</h2></div>
-      <p class="small muted" style="margin:0 0 12px">Removes your pay, bills, savings and goal from this browser.</p>
+      <p class="small muted" style="margin:0 0 12px">Removes your pay, account details, bills, savings and debts from this browser.</p>
       <button class="btn danger" type="button" id="resetAll">Clear all my data</button>
       <span class="confirm" id="resetConfirm"><span class="small">Are you sure?</span><button class="btn small danger" type="button" id="resetYes">Yes, clear it</button><button class="btn small ghost" type="button" id="resetNo">Cancel</button></span>
     </div>
@@ -374,9 +414,9 @@ tr.paid td.name { text-decoration: line-through; }
   "use strict";
   const KEY = "baiden-finance-v1";
   const SPLIT = [
-    { key: "exp", name: "Expenses", pct: 0.6, color: "var(--expenses)" },
-    { key: "spend", name: "Spending", pct: 0.2, color: "var(--spending)" },
-    { key: "save", name: "Savings", pct: 0.2, color: "var(--savings)" }
+    { key: "exp", name: "Expenses", pct: 0.6, color: "var(--expenses)", hint: "Rent, bills, groceries, fuel, debt repayments" },
+    { key: "spend", name: "Spending", pct: 0.2, color: "var(--spending)", hint: "Eating out, fun, shopping" },
+    { key: "save", name: "Savings", pct: 0.2, color: "var(--savings)", hint: "Money you put away" }
   ];
   // How many times each frequency happens per fortnight
   const PER_FN = { weekly: 2, fortnightly: 1, monthly: 12 / 26, quarterly: 4 / 26, yearly: 1 / 26, once: 0 };
@@ -388,18 +428,14 @@ tr.paid td.name { text-decoration: line-through; }
   const round2 = (n) => Math.round(n * 100) / 100;
   const uid = () => Math.random().toString(36).slice(2, 10);
 
-  function isoDate(d) {
-    const z = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
-    return z.toISOString().slice(0, 10);
-  }
+  function isoDate(d) { const z = new Date(d.getTime() - d.getTimezoneOffset() * 60000); return z.toISOString().slice(0, 10); }
   function parseDate(s) { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); }
   function today() { const t = new Date(); return new Date(t.getFullYear(), t.getMonth(), t.getDate()); }
   function addDays(s, n) { const d = parseDate(s); d.setDate(d.getDate() + n); return isoDate(d); }
   function addMonths(s, n) {
     const d = parseDate(s), day = d.getDate();
     d.setDate(1); d.setMonth(d.getMonth() + n);
-    const last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-    d.setDate(Math.min(day, last));
+    d.setDate(Math.min(day, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()));
     return isoDate(d);
   }
   function nextDue(s, freq) {
@@ -414,19 +450,21 @@ tr.paid td.name { text-decoration: line-through; }
   }
   function daysUntil(s) { return Math.round((parseDate(s) - today()) / 86400000); }
   function niceDate(s) { return parseDate(s).toLocaleDateString("en-AU", { day: "numeric", month: "short" }); }
-  function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]); }
+  function longDate(s) { return parseDate(s).toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long" }); }
+  function esc(s) { return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]); }
 
+  function blankAccounts() { return { exp: { name: "", bsb: "", number: "" }, spend: { name: "", bsb: "", number: "" }, save: { name: "", bsb: "", number: "" } }; }
   function exampleData() {
     const t = isoDate(today());
     return {
       example: true,
       pay: { gross: 3200, tax: 612, date: addDays(t, -3) },
+      accounts: blankAccounts(),
       bills: [
         { id: uid(), name: "Rent", amount: 900, freq: "fortnightly", type: "dd", due: addDays(t, 4), paid: false },
         { id: uid(), name: "Electricity", amount: 285.4, freq: "quarterly", type: "bill", due: addDays(t, 9), paid: false },
         { id: uid(), name: "Phone plan", amount: 45, freq: "monthly", type: "dd", due: addDays(t, 12), paid: false },
         { id: uid(), name: "Car insurance", amount: 96.5, freq: "monthly", type: "dd", due: addDays(t, 17), paid: false },
-        { id: uid(), name: "Dentist", amount: 180, freq: "once", type: "bill", due: addDays(t, -2), paid: true },
         { id: uid(), name: "Internet", amount: 79, freq: "monthly", type: "bill", due: addDays(t, -1), paid: false },
         { id: uid(), name: "Car rego", amount: 812, freq: "yearly", type: "bill", due: addDays(t, 40), paid: false }
       ],
@@ -437,14 +475,23 @@ tr.paid td.name { text-decoration: line-through; }
         { id: uid(), date: addDays(t, -10), amount: -150, note: "Car service" },
         { id: uid(), date: addDays(t, -3), amount: 517.6, note: "Fortnightly 20%" }
       ],
-      goal: { name: "Holiday to Bali", target: 6000 }
+      goal: { name: "Holiday", target: 6000 },
+      debts: [
+        { id: uid(), name: "Credit card", original: 2400, balance: 1650, repay: 150, freq: "fortnightly", payments: [] },
+        { id: uid(), name: "Afterpay – laptop", original: 1200, balance: 600, repay: 150, freq: "fortnightly", payments: [] }
+      ]
     };
   }
-  function emptyData() { return { example: false, pay: { gross: 0, tax: 0, date: isoDate(today()) }, bills: [], savings: [], goal: { name: "", target: 0 } }; }
+  function emptyData() { return { example: false, pay: { gross: 0, tax: 0, date: isoDate(today()) }, accounts: blankAccounts(), bills: [], savings: [], goal: { name: "", target: 0 }, debts: [] }; }
 
   let state;
   try { const raw = localStorage.getItem(KEY); state = raw ? JSON.parse(raw) : null; } catch (e) { state = null; }
   if (!state || !state.pay) state = exampleData();
+  // Fill in anything older saved data is missing
+  state.accounts = Object.assign(blankAccounts(), state.accounts || {});
+  state.debts = state.debts || [];
+  state.bills = state.bills || []; state.savings = state.savings || []; state.goal = state.goal || { name: "", target: 0 };
+
   function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* storage unavailable */ } }
 
   let toastTimer;
@@ -457,93 +504,78 @@ tr.paid td.name { text-decoration: line-through; }
   function takeHome() { return Math.max(0, round2((+state.pay.gross || 0) - (+state.pay.tax || 0))); }
   function buckets() { const th = takeHome(); return SPLIT.map((b) => ({ ...b, amount: round2(th * b.pct) })); }
   function billsPerFortnight() { return state.bills.reduce((s, b) => s + b.amount * (PER_FN[b.freq] ?? 0), 0); }
-  // Next pay day = last pay day + 14 (or 14 days from today if no pay day set)
+  function debtsPerFortnight() { return state.debts.filter((d) => d.balance > 0).reduce((s, d) => s + Math.min(d.repay || 0, d.balance) * (PER_FN[d.freq] ?? 0), 0); }
   function nextPayDay() {
     let d = state.pay.date || isoDate(today());
     do { d = addDays(d, 14); } while (daysUntil(d) <= 0);
     return d;
   }
-  // Outstanding = unpaid bills that are overdue or due before the next pay day
-  function outstanding() { const np = nextPayDay(); return state.bills.filter((b) => !b.paid && b.due < np); }
+  // Unpaid bills that are overdue or due before the next pay day
+  function billsOwing() { const np = nextPayDay(); return state.bills.filter((b) => !b.paid && b.due < np); }
   function savingsBalance() { return round2(state.savings.reduce((s, t) => s + t.amount, 0)); }
+  function totalDebt() { return round2(state.debts.reduce((s, d) => s + d.balance, 0)); }
   function billStatus(b) {
     if (b.paid) return { cls: "ok", text: "Paid" };
     const d = daysUntil(b.due);
     if (d < 0) return { cls: "late", text: `Overdue ${-d}d` };
-    if (d === 0) return { cls: "due", text: "Due today" };
-    if (d <= 7) return { cls: "due", text: `Due in ${d}d` };
+    if (d === 0) return { cls: "due", text: "Today" };
+    if (d <= 7) return { cls: "due", text: `In ${d}d` };
     return { cls: "bill", text: `In ${d} days` };
   }
 
   // ---------- Render ----------
   function render() {
     const th = takeHome(), bk = buckets(), exp = bk[0].amount;
-    const perFn = billsPerFortnight();
-    const owe = outstanding(), oweSum = owe.reduce((s, b) => s + b.amount, 0);
-    const bal = savingsBalance();
+    const committed = billsPerFortnight() + debtsPerFortnight();
+    const owe = billsOwing(), oweSum = owe.reduce((s, b) => s + b.amount, 0);
     const overdue = owe.filter((b) => daysUntil(b.due) < 0).length;
+    const bal = savingsBalance(), debt = totalDebt();
+    const np = nextPayDay();
 
     $("exampleNotice").hidden = !state.example;
-    $("cycleLabel").textContent = state.pay.date ? `Last pay day: ${parseDate(state.pay.date).toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "long" })}` : "";
+    $("sumTake").textContent = money(th);
+    $("sumSave").textContent = money(bal);
+    $("sumOwe").textContent = money(debt + oweSum);
 
-    // Overview
-    $("ovTake").textContent = money(th);
-    $("ovOutstanding").textContent = money(oweSum);
-    $("ovOutstandingSub").textContent = owe.length ? `${owe.length} due before ${niceDate(nextPayDay())}${overdue ? `, ${overdue} overdue` : ""}` : `nothing due before ${niceDate(nextPayDay())}`;
-    $("ovSavings").textContent = money(bal);
-    $("ovSavingsSub").textContent = state.goal.target > 0 ? `${Math.min(100, Math.round(bal / state.goal.target * 100))}% of ${state.goal.name || "goal"}` : "no goal set";
-    const left = exp - perFn;
-    $("ovLeft").textContent = money(left);
-    $("ovLeft").style.color = left < 0 ? "var(--danger)" : "";
-    $("ovSplitNote").textContent = `of ${money(th)} take-home`;
-    $("bExp").textContent = money(bk[0].amount);
-    $("bSpend").textContent = money(bk[1].amount);
-    $("bSave").textContent = money(bk[2].amount);
-    const usedPct = exp > 0 ? perFn / exp * 100 : 0;
-    $("bExpBar").style.width = Math.min(100, usedPct) + "%";
-    $("bExpBar").style.background = usedPct > 100 ? "var(--danger)" : "var(--expenses)";
-    $("bExpNote").textContent = exp > 0 ? `${money(perFn)} goes on bills (${Math.round(usedPct)}%), ${money(Math.max(0, left))} left for groceries, fuel and the rest` : "Enter your pay to see your budget";
-
-    const up = state.bills.filter((b) => !b.paid).sort((a, b) => a.due.localeCompare(b.due)).slice(0, 5);
-    $("ovUpcoming").innerHTML = up.length ? up.map((b) => {
-      const st = billStatus(b);
-      return `<div class="list-item"><div><div style="font-weight:600">${esc(b.name)}</div><div class="small muted">${niceDate(b.due)} · ${b.type === "dd" ? "Direct debit" : "Bill"}</div></div>
-        <div style="text-align:right"><div class="num" style="font-weight:600">${money(b.amount)}</div><span class="pill ${st.cls}">${st.text}</span></div></div>`;
-    }).join("") : `<div class="empty">All bills paid. Nice work.</div>`;
-
-    $("ovGoal").innerHTML = goalHtml(bal);
-
-    // Pay
+    // 1. Pay
     if (document.activeElement !== $("gross")) $("gross").value = state.pay.gross || "";
     if (document.activeElement !== $("tax")) $("tax").value = state.pay.tax || "";
     $("payDate").value = state.pay.date || "";
     $("payTake").textContent = money(th);
     $("payError").hidden = !(+state.pay.tax > +state.pay.gross);
-    $("payRate").textContent = state.pay.gross > 0 ? `${money(state.pay.gross)} gross − ${money(state.pay.tax)} tax · ${(state.pay.tax / state.pay.gross * 100).toFixed(1)}% of your pay goes to tax` : "Enter your gross pay and tax to see what you take home.";
+    $("payRate").textContent = state.pay.gross > 0
+      ? `${money(state.pay.gross)} before tax − ${money(state.pay.tax)} tax · ${(state.pay.tax / state.pay.gross * 100).toFixed(1)}% goes to tax`
+      : "Enter your pay before tax and the tax paid to see what you take home.";
+    $("payNext").textContent = `${longDate(np)} (in ${daysUntil(np)} days)` + (oweSum > 0 ? `. Before then you have ${money(oweSum)} in bills to cover.` : ".");
+
+    // 2. Split
+    $("splitNote").textContent = `of ${money(th)} take-home`;
+    renderBuckets(bk, committed);
     $("splitTable").innerHTML = bk.map((b) => `<tr>
-      <td><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${b.color};margin-right:8px"></span>${b.name}</td>
+      <td><span class="dot" style="background:${b.color}"></span>${b.name}</td>
       <td class="r num">${b.pct * 100}%</td><td class="r num" style="font-weight:600">${money(b.amount)}</td>
       <td class="r num hide-sm">${money(b.amount * 26 / 12)}</td><td class="r num hide-sm">${money(b.amount * 26)}</td></tr>`).join("") +
       `<tr><td style="font-weight:600">Total take-home</td><td class="r num">100%</td><td class="r num" style="font-weight:700">${money(th)}</td><td class="r num hide-sm">${money(th * 26 / 12)}</td><td class="r num hide-sm">${money(th * 26)}</td></tr>`;
 
-    // Bills
-    $("unpaidCount").hidden = owe.length === 0;
-    $("unpaidCount").textContent = owe.length;
+    // 3. Bills
+    const usedPct = exp > 0 ? committed / exp * 100 : 0;
     $("blOutstanding").textContent = money(oweSum);
-    $("blOutstandingSub").textContent = owe.length ? `${owe.length} bill${owe.length > 1 ? "s" : ""} due before next pay (${niceDate(nextPayDay())})${overdue ? `, ${overdue} overdue` : ""}` : "all paid up until next pay";
-    $("blFortnight").textContent = money(perFn);
+    $("blOutstandingSub").textContent = owe.length ? `${owe.length} bill${owe.length > 1 ? "s" : ""} before ${niceDate(np)}${overdue ? `, ${overdue} overdue` : ""}` : `all paid up until ${niceDate(np)}`;
+    $("blFortnight").textContent = money(billsPerFortnight());
     $("blUsed").textContent = exp > 0 ? Math.round(usedPct) + "%" : "–";
     $("blUsedBar").style.width = Math.min(100, usedPct) + "%";
     $("blUsedBar").style.background = usedPct > 100 ? "var(--danger)" : "var(--expenses)";
+    $("blLeft").textContent = exp > 0 ? `${money(exp - committed)} left after bills and debt repayments` : "";
     renderBills();
 
-    // Savings
+    // 4. Savings
     $("svBalance").textContent = money(bal);
     $("svBalanceSub").textContent = `${state.savings.length} transaction${state.savings.length === 1 ? "" : "s"}`;
     $("svTwenty").textContent = money(bk[2].amount);
     $("svAddTwenty").disabled = bk[2].amount <= 0;
     $("svGoal").textContent = state.goal.target > 0 ? money(state.goal.target) : "Not set";
-    $("svGoalSub").textContent = state.goal.target > 0 ? goalSub(bal) : "Set one below";
+    $("svGoalSub").textContent = state.goal.target > 0 ? (state.goal.name || "Savings goal") : "Set one below";
+    $("goalCard").innerHTML = goalHtml(bal);
     if (document.activeElement !== $("gName")) $("gName").value = state.goal.name || "";
     if (document.activeElement !== $("gTarget")) $("gTarget").value = state.goal.target || "";
     const txs = [...state.savings].sort((a, b) => b.date.localeCompare(a.date));
@@ -553,22 +585,66 @@ tr.paid td.name { text-decoration: line-through; }
       <div style="display:flex;gap:10px;align-items:center"><span class="num" style="font-weight:600;color:${t.amount >= 0 ? "var(--savings)" : "var(--danger)"}">${t.amount >= 0 ? "+" : "−"}${money(Math.abs(t.amount))}</span>
       <button class="btn small ghost" type="button" data-deltx="${t.id}" aria-label="Delete ${esc(t.note || "entry")}">✕</button></div></div>`).join("")
       : `<div class="empty">No savings yet. Add your current balance as a deposit to get started.</div>`;
+
+    // 5. Debts
+    const openDebts = state.debts.filter((d) => d.balance > 0);
+    $("owingCount").hidden = openDebts.length + owe.length === 0;
+    $("owingCount").textContent = openDebts.length + owe.length;
+    $("dbTotal").textContent = money(debt);
+    $("dbTotalSub").textContent = openDebts.length ? `across ${openDebts.length} debt${openDebts.length > 1 ? "s" : ""}` : "debt free";
+    $("dbRepay").textContent = money(debtsPerFortnight());
+    $("dbBills").textContent = money(oweSum);
+    $("dbBillsSub").textContent = owe.length ? `${owe.length} bill${owe.length > 1 ? "s" : ""}${overdue ? `, ${overdue} overdue` : ""}` : "nothing due";
+    renderDebts();
+    const ob = [...owe].sort((a, b) => a.due.localeCompare(b.due));
+    $("owedBills").innerHTML = ob.length ? ob.map((b) => {
+      const st = billStatus(b);
+      return `<div class="list-item"><div><div style="font-weight:600">${esc(b.name)}</div><div class="small muted">${niceDate(b.due)} · ${b.type === "dd" ? "Direct debit" : "Due date"}</div></div>
+        <div style="text-align:right"><div class="num" style="font-weight:600">${money(b.amount)}</div><span class="pill ${st.cls}">${st.text}</span></div></div>`;
+    }).join("") : `<div class="empty">No bills due before your next pay.</div>`;
   }
 
-  function goalSub(bal) {
-    const g = state.goal, rem = g.target - bal, twenty = buckets()[2].amount;
-    if (rem <= 0) return `${g.name || "Goal"} reached!`;
-    const fns = twenty > 0 ? Math.ceil(rem / twenty) : null;
-    return `${money(rem)} to go${fns ? ` · about ${fns} fortnight${fns > 1 ? "s" : ""} at 20%` : ""}`;
+  function renderBuckets(bk, committed) {
+    const box = $("buckets");
+    // Build once so typing in the account fields isn't interrupted, then just update amounts
+    if (!box.dataset.built) {
+      box.innerHTML = bk.map((b) => {
+        const a = state.accounts[b.key];
+        return `<div class="bucket" style="--c:${b.color}">
+          <div class="bucket-top">
+            <div><div style="display:flex;gap:10px;align-items:baseline"><h3>${b.name}</h3><span class="pct">${b.pct * 100}%</span></div>
+              <div class="small muted">${b.hint}</div></div>
+            <div class="amt num" id="amt-${b.key}"></div>
+          </div>
+          <div class="acct">
+            <div class="field"><label for="acc-${b.key}-name">Account name</label><input id="acc-${b.key}-name" data-acc="${b.key}" data-f="name" value="${esc(a.name)}" placeholder="Add later"></div>
+            <div class="field"><label for="acc-${b.key}-bsb">BSB</label><input id="acc-${b.key}-bsb" data-acc="${b.key}" data-f="bsb" value="${esc(a.bsb)}" inputmode="numeric" maxlength="7" placeholder="000-000"></div>
+            <div class="field"><label for="acc-${b.key}-number">Account number</label><input id="acc-${b.key}-number" data-acc="${b.key}" data-f="number" value="${esc(a.number)}" inputmode="numeric" maxlength="12" placeholder="Add later"></div>
+          </div>
+          ${b.key === "exp" ? `<div class="bar"><span id="expBar" style="width:0"></span></div><div class="small muted num" id="expNote"></div>` : ""}
+        </div>`;
+      }).join("");
+      box.dataset.built = "1";
+    }
+    bk.forEach((b) => { $("amt-" + b.key).textContent = money(b.amount); });
+    const exp = bk[0].amount, used = exp > 0 ? committed / exp * 100 : 0;
+    $("expBar").style.width = Math.min(100, used) + "%";
+    $("expBar").style.background = used > 100 ? "var(--danger)" : "var(--expenses)";
+    $("expNote").textContent = exp > 0 ? `${money(committed)} goes on bills and debt repayments (${Math.round(used)}%), ${money(exp - committed)} left for groceries, fuel and the rest` : "";
   }
+  function syncAccountInputs() {
+    document.querySelectorAll("#buckets input[data-acc]").forEach((i) => { i.value = state.accounts[i.dataset.acc][i.dataset.f] || ""; });
+  }
+
   function goalHtml(bal) {
     const g = state.goal;
-    if (!(g.target > 0)) return `<div class="empty">No goal yet. Set one on the Savings tab.</div>`;
-    const pct = Math.min(100, bal / g.target * 100);
+    if (!(g.target > 0)) return `<div class="empty">No goal yet. Set one below.</div>`;
+    const pct = Math.min(100, bal / g.target * 100), rem = g.target - bal, twenty = buckets()[2].amount;
+    const fns = twenty > 0 && rem > 0 ? Math.ceil(rem / twenty) : null;
     return `<div style="display:grid;gap:10px">
-      <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><strong>${esc(g.name || "Savings goal")}</strong><span class="num muted">${money(bal)} of ${money(g.target)}</span></div>
+      <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><h2>${esc(g.name || "Savings goal")}</h2><span class="num muted">${money(bal)} of ${money(g.target)}</span></div>
       <div class="bar"><span style="width:${pct}%;background:var(--savings)"></span></div>
-      <div class="small muted">${Math.round(pct)}% there · ${goalSub(bal)}</div></div>`;
+      <div class="small muted">${rem <= 0 ? "Goal reached!" : `${Math.round(pct)}% there · ${money(rem)} to go${fns ? ` · about ${fns} fortnight${fns > 1 ? "s" : ""} at 20%` : ""}`}</div></div>`;
   }
 
   let editingId = null;
@@ -584,7 +660,7 @@ tr.paid td.name { text-decoration: line-through; }
         : `<button class="btn small ghost" type="button" data-act="edit" data-id="${b.id}" aria-label="Edit ${esc(b.name)}">Edit</button><button class="btn small ghost" type="button" data-act="del" data-id="${b.id}" aria-label="Delete ${esc(b.name)}">✕</button>`;
       return `<tr class="${b.paid ? "paid" : ""}">
         <td class="name" style="font-weight:600">${esc(b.name)}</td>
-        <td><span class="pill ${b.type === "dd" ? "dd" : "bill"}">${b.type === "dd" ? "Direct debit" : "Bill"}</span></td>
+        <td><span class="pill ${b.type === "dd" ? "dd" : "bill"}">${b.type === "dd" ? "Direct debit" : "Due date"}</span></td>
         <td class="hide-sm">${FREQ_LABEL[b.freq]}</td>
         <td class="num">${niceDate(b.due)}</td>
         <td class="r num" style="font-weight:600">${money(b.amount)}</td>
@@ -595,12 +671,44 @@ tr.paid td.name { text-decoration: line-through; }
     }).join("") : `<tr><td colspan="7" class="empty">${state.bills.length ? "Nothing matches this filter." : "No bills yet. Add your first one above."}</td></tr>`;
   }
 
+  let editingDebt = null;
+  const pendingDebtDelete = new Set();
+  function renderDebts() {
+    const list = [...state.debts].sort((a, b) => (a.balance <= 0) - (b.balance <= 0) || b.balance - a.balance);
+    $("debtList").innerHTML = list.length ? list.map((d) => {
+      const paidOff = d.original > 0 ? Math.min(100, (d.original - d.balance) / d.original * 100) : 0;
+      const n = d.repay > 0 && d.balance > 0 ? Math.ceil(d.balance / d.repay) : null;
+      const unit = { weekly: "week", fortnightly: "fortnight", monthly: "month" }[d.freq];
+      const done = d.balance <= 0;
+      const del = pendingDebtDelete.has(d.id)
+        ? `<button class="btn small danger" type="button" data-dact="delyes" data-id="${d.id}">Delete</button><button class="btn small ghost" type="button" data-dact="delno" data-id="${d.id}">Keep</button>`
+        : `<button class="btn small ghost" type="button" data-dact="edit" data-id="${d.id}">Edit</button><button class="btn small ghost" type="button" data-dact="del" data-id="${d.id}" aria-label="Delete ${esc(d.name)}">✕</button>`;
+      return `<div class="debt">
+        <div class="debt-head">
+          <div><div style="font-weight:700">${esc(d.name)} ${done ? `<span class="pill ok">Paid off</span>` : ""}</div>
+            <div class="small muted">${d.repay > 0 ? `${money(d.repay)} ${FREQ_LABEL[d.freq].toLowerCase()}` : "No regular repayment"}${n ? ` · about ${n} ${unit}${n > 1 ? "s" : ""} to go` : ""}</div></div>
+          <div style="text-align:right"><div class="num" style="font-weight:700;font-size:1.15rem;color:${done ? "var(--savings)" : "var(--danger)"}">${money(d.balance)}</div>
+            <div class="small muted num">of ${money(d.original)}</div></div>
+        </div>
+        <div class="bar"><span style="width:${paidOff}%;background:var(--savings)"></span></div>
+        <div class="debt-foot">
+          <span class="small muted">${Math.round(paidOff)}% paid off</span>
+          <div class="actions">
+            ${done ? "" : `<div class="money pay-inline"><input type="number" inputmode="decimal" min="0.01" step="0.01" id="pay-${d.id}" value="${d.repay > 0 ? Math.min(d.repay, d.balance) : ""}" aria-label="Payment amount for ${esc(d.name)}"></div>
+            <button class="btn small" type="button" data-dact="pay" data-id="${d.id}">Record payment</button>`}
+            ${del}
+          </div>
+        </div>
+      </div>`;
+    }).join("") : `<div class="empty">No debts recorded. If you owe money on a card or loan, add it above.</div>`;
+  }
+
   function touch() { state.example = false; save(); render(); }
 
   // ---------- Tabs ----------
-  const tabs = ["overview", "pay", "bills", "savings"];
+  const tabs = ["pay", "split", "bills", "savings", "debts"];
   function showTab(name, focus) {
-    if (!tabs.includes(name)) name = "overview";
+    if (!tabs.includes(name)) name = "pay";
     tabs.forEach((t) => {
       $(t).hidden = t !== name;
       const btn = $("tab-" + t);
@@ -618,7 +726,7 @@ tr.paid td.name { text-decoration: line-through; }
       if (e.key === "ArrowLeft") showTab(tabs[(i + tabs.length - 1) % tabs.length], true);
     });
   });
-  document.querySelectorAll("[data-goto]").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.goto)));
+  document.querySelectorAll("[data-goto]").forEach((b) => b.addEventListener("click", () => { showTab(b.dataset.goto); window.scrollTo(0, 0); }));
   window.addEventListener("hashchange", () => showTab(location.hash.slice(1)));
 
   // ---------- Pay ----------
@@ -628,20 +736,27 @@ tr.paid td.name { text-decoration: line-through; }
   $("payDate").addEventListener("change", (e) => { state.pay.date = e.target.value; touch(); });
   $("payForm").addEventListener("submit", (e) => e.preventDefault());
 
+  // ---------- Split: account details ----------
+  $("buckets").addEventListener("input", (e) => {
+    const i = e.target.closest("input[data-acc]"); if (!i) return;
+    state.accounts[i.dataset.acc][i.dataset.f] = i.value.trim(); state.example = false; save();
+    $("exampleNotice").hidden = true;
+  });
+  $("buckets").addEventListener("change", (e) => { if (e.target.matches("input[data-acc]")) toast("Account details saved"); });
+
   // ---------- Bills ----------
+  function syncDueLabel() { $("bDueLabel").textContent = $("bType").value === "dd" ? "Debit date" : "Due date"; }
+  $("bType").addEventListener("change", syncDueLabel);
   function resetBillForm() {
-    editingId = null; $("billForm").reset(); $("bFreq").value = "monthly"; $("bDue").value = isoDate(today());
-    $("billSubmit").textContent = "Add"; $("billFormTitle").textContent = "Add a bill or direct debit"; $("billCancel").hidden = true;
+    editingId = null; $("billForm").reset(); $("bFreq").value = "monthly"; $("bDue").value = isoDate(today()); syncDueLabel();
+    $("billSubmit").textContent = "Add"; $("billFormTitle").textContent = "Add a bill"; $("billCancel").hidden = true;
   }
   $("billForm").addEventListener("submit", (e) => {
     e.preventDefault();
     const data = { name: $("bName").value.trim(), amount: round2(parseFloat($("bAmount").value) || 0), freq: $("bFreq").value, type: $("bType").value, due: $("bDue").value };
     if (!data.name || !data.due) return;
-    if (editingId) {
-      Object.assign(state.bills.find((b) => b.id === editingId), data); toast("Bill updated");
-    } else {
-      state.bills.push({ id: uid(), paid: false, ...data }); toast(`${data.name} added`);
-    }
+    if (editingId) { Object.assign(state.bills.find((b) => b.id === editingId), data); toast("Bill updated"); }
+    else { state.bills.push({ id: uid(), paid: false, ...data }); toast(`${data.name} added`); }
     resetBillForm(); touch();
   });
   $("billCancel").addEventListener("click", resetBillForm);
@@ -651,17 +766,12 @@ tr.paid td.name { text-decoration: line-through; }
     const b = state.bills.find((x) => x.id === btn.dataset.id); if (!b) return;
     const act = btn.dataset.act;
     if (act === "paid") {
-      if (b.paid) { b.paid = false; if (b.prevDue) { b.due = b.prevDue; delete b.prevDue; } toast("Marked unpaid"); }
+      if (b.paid) { b.paid = false; toast("Marked unpaid"); }
       else if (b.freq === "once") { b.paid = true; toast(`${b.name} paid`); }
-      else {
-        // Recurring: roll on to the next due date, so it stays on the list for next time
-        b.prevDue = b.due; b.due = nextDue(b.due, b.freq); b.paid = false;
-        b.lastPaid = isoDate(today());
-        toast(`${b.name} paid · next due ${niceDate(b.due)}`);
-      }
+      else { b.due = nextDue(b.due, b.freq); b.lastPaid = isoDate(today()); toast(`${b.name} paid · next ${niceDate(b.due)}`); }
       touch();
     } else if (act === "edit") {
-      editingId = b.id; $("bName").value = b.name; $("bAmount").value = b.amount; $("bFreq").value = b.freq; $("bType").value = b.type; $("bDue").value = b.due;
+      editingId = b.id; $("bName").value = b.name; $("bAmount").value = b.amount; $("bFreq").value = b.freq; $("bType").value = b.type; $("bDue").value = b.due; syncDueLabel();
       $("billSubmit").textContent = "Save"; $("billFormTitle").textContent = `Edit ${b.name}`; $("billCancel").hidden = false;
       $("bName").focus();
     } else if (act === "del") { pendingDelete.add(b.id); renderBills(); }
@@ -693,17 +803,52 @@ tr.paid td.name { text-decoration: line-through; }
     toast("Goal saved"); touch();
   });
 
+  // ---------- Debts ----------
+  function resetDebtForm() {
+    editingDebt = null; $("debtForm").reset(); $("dFreq").value = "fortnightly";
+    $("debtSubmit").textContent = "Add"; $("debtFormTitle").textContent = "Add a debt"; $("debtCancel").hidden = true;
+  }
+  $("debtForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const name = $("dName").value.trim(), balance = round2(parseFloat($("dBalance").value) || 0);
+    const repay = round2(parseFloat($("dRepay").value) || 0), freq = $("dFreq").value;
+    if (!name) return;
+    if (editingDebt) {
+      const d = state.debts.find((x) => x.id === editingDebt);
+      Object.assign(d, { name, balance, repay, freq, original: Math.max(d.original, balance) }); toast("Debt updated");
+    } else { state.debts.push({ id: uid(), name, original: balance, balance, repay, freq, payments: [] }); toast(`${name} added`); }
+    resetDebtForm(); touch();
+  });
+  $("debtCancel").addEventListener("click", resetDebtForm);
+  $("debtList").addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-dact]"); if (!btn) return;
+    const d = state.debts.find((x) => x.id === btn.dataset.id); if (!d) return;
+    const act = btn.dataset.dact;
+    if (act === "pay") {
+      const amt = round2(parseFloat($("pay-" + d.id).value) || 0); if (amt <= 0) return;
+      const paid = Math.min(amt, d.balance);
+      d.balance = round2(d.balance - paid); d.payments.push({ date: isoDate(today()), amount: paid });
+      toast(d.balance <= 0 ? `${d.name} paid off!` : `Paid ${money(paid)} · ${money(d.balance)} left`); touch();
+    } else if (act === "edit") {
+      editingDebt = d.id; $("dName").value = d.name; $("dBalance").value = d.balance; $("dRepay").value = d.repay || ""; $("dFreq").value = d.freq;
+      $("debtSubmit").textContent = "Save"; $("debtFormTitle").textContent = `Edit ${d.name}`; $("debtCancel").hidden = false; $("dName").focus();
+    } else if (act === "del") { pendingDebtDelete.add(d.id); renderDebts(); }
+    else if (act === "delno") { pendingDebtDelete.delete(d.id); renderDebts(); }
+    else if (act === "delyes") { pendingDebtDelete.delete(d.id); state.debts = state.debts.filter((x) => x.id !== d.id); toast("Debt deleted"); touch(); }
+  });
+
   // ---------- Example / reset ----------
   $("keepExample").addEventListener("click", touch);
-  function clearAll() { state = emptyData(); save(); resetBillForm(); render(); showTab("pay"); toast("Cleared. Start with your pay."); }
+  function clearAll() { state = emptyData(); save(); resetBillForm(); resetDebtForm(); render(); syncAccountInputs(); showTab("pay"); toast("Cleared. Start with your pay."); }
   $("clearExample").addEventListener("click", clearAll);
   $("resetAll").addEventListener("click", () => { $("resetConfirm").classList.add("show"); $("resetAll").hidden = true; });
   $("resetNo").addEventListener("click", () => { $("resetConfirm").classList.remove("show"); $("resetAll").hidden = false; });
   $("resetYes").addEventListener("click", () => { $("resetConfirm").classList.remove("show"); $("resetAll").hidden = false; clearAll(); });
 
   resetBillForm();
+  resetDebtForm();
   render();
-  showTab(location.hash.slice(1) || "overview");
+  showTab(location.hash.slice(1) || "pay");
 })();
 </script>
 </body>
