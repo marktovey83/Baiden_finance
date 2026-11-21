@@ -176,6 +176,14 @@ tr.paid td.name { text-decoration: line-through; }
 .debt .bar { background: var(--line); }
 .debt-head, .debt-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
 .pay-inline { width: 110px; }
+.sync { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; font-size: .78rem; font-weight: 600; color: var(--muted); }
+.sync-dot { width: 8px; height: 8px; border-radius: 99px; background: var(--muted); flex: none; }
+.sync[data-kind="ok"] .sync-dot { background: var(--savings); }
+.sync[data-kind="saving"] .sync-dot { background: var(--spending); }
+.sync[data-kind="err"], .sync[data-kind="ro"] { color: var(--danger); }
+.sync[data-kind="err"] .sync-dot, .sync[data-kind="ro"] .sync-dot { background: var(--danger); }
+body.busy .panel { opacity: .55; pointer-events: none; }
+body.readonly .panel :is(form, .actions, .pay-actions button:first-child, #svAddTwenty, #buckets input, [data-deltx], [data-delpay], #resetAll) { pointer-events: none; opacity: .5; }
 .pay-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
 .net { background: var(--surface); }
 .net-value { font-family: var(--font-display); font-weight: 800; font-size: 2.4rem; line-height: 1.1; margin: 4px 0; }
@@ -210,6 +218,7 @@ tr.total td { font-weight: 700; }
       <div>
         <h1>Baiden Finance</h1>
         <div class="muted small">Your fortnightly money, sorted 60 / 20 / 20</div>
+        <div class="sync" id="sync" hidden><span class="sync-dot" aria-hidden="true"></span><span id="syncText"></span></div>
       </div>
     </div>
     <div class="summary">
@@ -224,6 +233,14 @@ tr.total td { font-weight: 700; }
     <span style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn small ghost" id="keepExample" type="button">Keep and edit</button>
       <button class="btn small" id="clearExample" type="button">Clear example data</button>
+    </span>
+  </div>
+
+  <div id="sharedEmpty" class="notice" hidden>
+    <span>No figures on the shared page yet. Start on the Pay tab. Anything you enter here is seen by everyone you've shared this page with.</span>
+    <span style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn small" id="copyLocal" type="button" hidden>Copy figures from this browser</button>
+      <button class="btn small ghost" id="dismissEmpty" type="button">Got it</button>
     </span>
   </div>
 
@@ -421,7 +438,7 @@ tr.total td { font-weight: 700; }
 
     <div class="card">
       <div class="card-head"><h2>Start over</h2></div>
-      <p class="small muted" style="margin:0 0 12px">Removes your pay history, account details, bills, savings and debts from this browser.</p>
+      <p class="small muted" style="margin:0 0 12px">Removes your pay history, account details, bills, savings and debts. On the shared page this clears them for both of you.</p>
       <button class="btn danger" type="button" id="resetAll">Clear all my data</button>
       <span class="confirm" id="resetConfirm"><span class="small">Are you sure?</span><button class="btn small danger" type="button" id="resetYes">Yes, clear it</button><button class="btn small ghost" type="button" id="resetNo">Cancel</button></span>
     </div>
@@ -565,16 +582,108 @@ tr.total td { font-weight: 700; }
   }
   function emptyData() { return { example: false, pay: { gross: 0, tax: 0, date: isoDate(today()) }, payHistory: [], accounts: blankAccounts(), bills: [], savings: [], goal: { name: "", target: 0 }, debts: [] }; }
 
-  let state;
-  try { const raw = localStorage.getItem(KEY); state = raw ? JSON.parse(raw) : null; } catch (e) { state = null; }
-  if (!state || !state.pay) state = exampleData();
   // Fill in anything older saved data is missing
-  state.accounts = Object.assign(blankAccounts(), state.accounts || {});
-  state.debts = state.debts || [];
-  state.payHistory = state.payHistory || [];
-  state.bills = state.bills || []; state.savings = state.savings || []; state.goal = state.goal || { name: "", target: 0 };
+  function normalize(st) {
+    st.pay = Object.assign({ gross: 0, tax: 0, date: isoDate(today()) }, st.pay || {});
+    st.accounts = Object.assign(blankAccounts(), st.accounts || {});
+    st.debts = st.debts || []; st.payHistory = st.payHistory || [];
+    st.bills = st.bills || []; st.savings = st.savings || []; st.goal = st.goal || { name: "", target: 0 };
+    return st;
+  }
 
-  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* storage unavailable */ } }
+  // Figures saved in this browser (used when the page is opened as a plain file)
+  let localCopy = null;
+  try { const raw = localStorage.getItem(KEY); localCopy = raw ? JSON.parse(raw) : null; } catch (e) { localCopy = null; }
+  const hasOwnLocal = !!(localCopy && localCopy.pay && !localCopy.example);
+
+  // "shared": figures live on the shared page, seen by everyone it's shared with
+  // "local": saved in this browser only. "connecting": waiting to find out.
+  const inViewer = !!(window.claude && typeof window.claude.use === "function");
+  let mode = inViewer ? "connecting" : "local";
+  let state = inViewer ? normalize(emptyData()) : (localCopy && localCopy.pay ? normalize(localCopy) : exampleData());
+
+  let ref = null, lastJSON = null, writing = false, again = false, saveTimer = null, readOnly = false, loaded = false;
+
+  function setSync(kind, text) {
+    const el = $("sync"); el.hidden = false; el.dataset.kind = kind; $("syncText").textContent = text;
+  }
+  function storeBody() { const { example, ...rest } = state; return rest; }
+  function save() {
+    if (mode === "local") { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* storage unavailable */ } return; }
+    if (mode !== "shared" || readOnly) return;
+    setSync("saving", "Saving…");
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => { saveTimer = null; flush(); }, 600);
+  }
+  async function flush(retried) {
+    if (writing) { again = true; return; }
+    const json = JSON.stringify(storeBody());
+    if (json === lastJSON) { setSync("ok", "Shared · saved"); return; }
+    writing = true;
+    try {
+      await ref.set(JSON.parse(json));
+      lastJSON = json; setSync("ok", "Shared · saved");
+    } catch (e) {
+      const code = e && e.code;
+      if (code === "unavailable" && !retried) { writing = false; setTimeout(() => flush(true), 800 + Math.random() * 1200); return; }
+      if (code === "invalid_argument" || code === "not_granted") setReadOnly();
+      else setSync("err", "Not saved. Check your connection and try again.");
+    } finally {
+      writing = false;
+      if (again) { again = false; flush(); }
+    }
+  }
+  function setReadOnly() {
+    readOnly = true; document.body.classList.add("readonly");
+    setSync("ro", "View only. Ask the owner for Contributor access to make changes.");
+  }
+  function applyRemote(data) {
+    state = normalize(JSON.parse(JSON.stringify(data))); state.example = false;
+    render(); syncAccountInputs();
+  }
+  function goLocal() {
+    mode = "local";
+    state = localCopy && localCopy.pay ? normalize(localCopy) : exampleData();
+    document.body.classList.remove("busy");
+    setSync("local", "Saved on this device only");
+    render(); syncAccountInputs();
+  }
+  async function connectShared() {
+    document.body.classList.add("busy");
+    setSync("saving", "Loading your shared figures…");
+    let db = null;
+    try { db = await window.claude.use("db"); } catch (e) { db = null; }
+    if (!db) { goLocal(); return; }
+    try {
+      const user = await window.claude.use("user");
+      if (user && (await user.can("data.write")) === false) setReadOnly();
+    } catch (e) { /* decide on first write */ }
+    ref = db.doc("finance/state");
+    const slow = setTimeout(() => { if (!loaded) setSync("err", "Still trying to reach your shared figures…"); }, 10000);
+    ref.onSnapshot((snap) => {
+      if (snap.metadata.hasPendingWrites) return;
+      if (saveTimer || writing) return; // our own newer change is on its way
+      if (!snap.metadata.fromCache) { clearTimeout(slow); }
+      if (snap.exists) {
+        const json = JSON.stringify(snap.data());
+        if (json !== lastJSON) { lastJSON = json; applyRemote(snap.data()); }
+      } else if (snap.metadata.fromCache) {
+        return;
+      } else if (!loaded) {
+        // Nothing shared yet
+        $("sharedEmpty").hidden = false;
+        $("copyLocal").hidden = !hasOwnLocal;
+      }
+      if (!loaded) {
+        loaded = true; mode = "shared"; document.body.classList.remove("busy");
+        if (!readOnly) setSync("ok", "Shared · saved");
+      }
+    }, () => {
+      clearTimeout(slow);
+      setSync("err", "Can't reach your shared figures right now. Changes won't be saved until you reload.");
+      mode = "connecting";
+    });
+  }
 
   let toastTimer;
   function toast(msg) {
@@ -622,7 +731,7 @@ tr.total td { font-weight: 700; }
     // 1. Pay
     if (document.activeElement !== $("gross")) $("gross").value = state.pay.gross || "";
     if (document.activeElement !== $("tax")) $("tax").value = state.pay.tax || "";
-    $("payDate").value = state.pay.date || "";
+    if (document.activeElement !== $("payDate")) $("payDate").value = state.pay.date || "";
     $("payTake").textContent = money(th);
     $("payError").hidden = !(+state.pay.tax > +state.pay.gross);
     $("payRate").textContent = state.pay.gross > 0
@@ -718,7 +827,7 @@ tr.total td { font-weight: 700; }
     $("expNote").textContent = exp > 0 ? `${money(committed)} goes on bills and direct debits (${Math.round(used)}%), ${money(exp - committed)} left for groceries, fuel and the rest` : "";
   }
   function syncAccountInputs() {
-    document.querySelectorAll("#buckets input[data-acc]").forEach((i) => { i.value = state.accounts[i.dataset.acc][i.dataset.f] || ""; });
+    document.querySelectorAll("#buckets input[data-acc]").forEach((i) => { if (i !== document.activeElement) i.value = state.accounts[i.dataset.acc][i.dataset.f] || ""; });
   }
 
   function goalHtml(bal) {
@@ -1000,16 +1109,23 @@ tr.total td { font-weight: 700; }
 
   // ---------- Example / reset ----------
   $("keepExample").addEventListener("click", touch);
-  function clearAll() { state = emptyData(); save(); resetBillForm(); resetDebtForm(); render(); syncAccountInputs(); showTab("pay"); toast("Cleared. Start with your pay."); }
+  function clearAll() { state = emptyData(); $("exampleNotice").hidden = true; save(); resetBillForm(); resetDebtForm(); render(); syncAccountInputs(); showTab("pay"); toast("Cleared. Start with your pay."); }
   $("clearExample").addEventListener("click", clearAll);
   $("resetAll").addEventListener("click", () => { $("resetConfirm").classList.add("show"); $("resetAll").hidden = true; });
   $("resetNo").addEventListener("click", () => { $("resetConfirm").classList.remove("show"); $("resetAll").hidden = false; });
   $("resetYes").addEventListener("click", () => { $("resetConfirm").classList.remove("show"); $("resetAll").hidden = false; clearAll(); });
 
+  $("copyLocal").addEventListener("click", () => {
+    state = normalize(JSON.parse(JSON.stringify(localCopy))); state.example = false;
+    $("sharedEmpty").hidden = true; save(); render(); syncAccountInputs(); toast("Copied to the shared page");
+  });
+  $("dismissEmpty").addEventListener("click", () => { $("sharedEmpty").hidden = true; });
+
   resetBillForm();
   resetDebtForm();
   render();
   showTab(location.hash.slice(1) || "pay");
+  if (inViewer) connectShared(); else setSync("local", "Saved on this device only");
 })();
 </script>
 </body>

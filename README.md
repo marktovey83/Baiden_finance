@@ -9,5 +9,5 @@ A simple fortnightly money planner. Open `index.html` in any browser. There's no
 5. **Debts**: credit cards, loans, Afterpay and so on, with amount owing and repayments (kept separate from the 60% expenses), progress and bills still to pay before next pay day.
 6. **Totals**: a running total of every saved pay (plus this financial year), where you stand overall (savings minus debts and bills due), a fortnightly breakdown, fortnight/month/year totals, and savings and debt progress so far.
 
-Data is saved in your browser (localStorage) on this device only.
+Opened from the shared Claude page, figures are stored on that page, so everyone it is shared with sees the same numbers live. Opened as a plain file, figures are saved in that browser only.
 
