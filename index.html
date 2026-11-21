@@ -291,8 +291,7 @@ tr.total td { font-weight: 700; }
 
   <!-- 3. BILLS -->
   <section class="panel" id="bills" role="tabpanel" aria-labelledby="tab-bills" hidden>
-    <div class="grid-3">
-      <div class="card stat"><span class="label">Unpaid before next pay</span><span class="value num" id="blOutstanding" style="color:var(--danger)">$0.00</span><span class="sub" id="blOutstandingSub"></span></div>
+    <div class="grid-2">
       <div class="card stat"><span class="label">Bills per fortnight</span><span class="value num" id="blFortnight">$0.00</span><span class="sub">all bills averaged to a fortnight</span></div>
       <div class="card stat"><span class="label">Expenses budget used</span><span class="value num" id="blUsed">0%</span><div class="bar" style="margin-top:6px"><span id="blUsedBar" style="background:var(--expenses);width:0"></span></div><span class="sub" id="blLeft"></span></div>
     </div>
@@ -303,7 +302,7 @@ tr.total td { font-weight: 700; }
         <div class="field"><label for="bName">Name</label><input id="bName" required placeholder="e.g. Electricity"></div>
         <div class="field"><label for="bAmount">Amount</label><div class="money"><input id="bAmount" type="number" inputmode="decimal" min="0" step="0.01" required placeholder="0.00"></div></div>
         <div class="field"><label for="bType">How it's paid</label>
-          <select id="bType"><option value="dd">Direct debit (comes out automatically)</option><option value="bill">Due date (I pay it myself)</option></select>
+          <select id="bType"><option value="dd">Direct debit</option><option value="bill">Due date</option></select>
         </div>
         <div class="field"><label for="bFreq">How often</label>
           <select id="bFreq">
@@ -612,8 +611,6 @@ tr.total td { font-weight: 700; }
 
     // 3. Bills
     const usedPct = exp > 0 ? committed / exp * 100 : 0;
-    $("blOutstanding").textContent = money(oweSum);
-    $("blOutstandingSub").textContent = owe.length ? `${owe.length} bill${owe.length > 1 ? "s" : ""} before ${niceDate(np)}${overdue ? `, ${overdue} overdue` : ""}` : `all paid up until ${niceDate(np)}`;
     $("blFortnight").textContent = money(billsPerFortnight());
     $("blUsed").textContent = exp > 0 ? Math.round(usedPct) + "%" : "–";
     $("blUsedBar").style.width = Math.min(100, usedPct) + "%";
